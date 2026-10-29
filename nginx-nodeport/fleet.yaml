@@ -1,0 +1,9 @@
+defaultNamespace: edge-demo
+labels:
+  app: nginx-nodeport
+# Target clusters carrying the env=edge label (set when installing fleet-agent).
+targetCustomizations:
+  - name: edge
+    clusterSelector:
+      matchLabels:
+        env: edge
