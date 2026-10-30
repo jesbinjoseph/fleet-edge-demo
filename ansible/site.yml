@@ -19,6 +19,14 @@
     - { role: edge-prereqs,     tags: [prereqs] }
     - { role: edge-k3s,         tags: [k3s] }
     - { role: edge-fleet-agent, tags: [fleet-agent] }
+  post_tasks:
+    - name: Remember which hosts made it through (skips refused/unsupported machines in verify)
+      ansible.builtin.set_fact:
+        verify_hosts: "{{ ansible_play_hosts }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+      tags: [always]
 
 - name: Verify registration on the hub
   hosts: localhost

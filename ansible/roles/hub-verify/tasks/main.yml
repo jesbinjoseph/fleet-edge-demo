@@ -5,7 +5,7 @@
   ansible.builtin.command: >
     kubectl --context {{ hub_kube_context }} -n {{ hub_fleet_namespace }}
     get clusters.fleet.cattle.io -l name={{ item }} -o jsonpath={.items[*].status.agent.lastSeen}
-  loop: "{{ groups['edge'] }}"
+  loop: "{{ verify_hosts | default(groups['edge']) }}"
   register: seen
   until: seen.stdout | length > 0
   retries: 24
