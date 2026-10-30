@@ -57,6 +57,12 @@
     regexp: '^([^#].*\\sswap\\s.*)$'
     replace: '# \\1'
 
+- name: Load br_netfilter now and at boot
+  community.general.modprobe:
+    name: br_netfilter
+    state: present
+    persistent: present
+
 - name: Kernel params for k8s
   ansible.posix.sysctl:
     name: "{{ item.key }}"
@@ -66,4 +72,3 @@
   loop:
     - { key: net.ipv4.ip_forward, value: "1" }
     - { key: net.bridge.bridge-nf-call-iptables, value: "1" }
-  ignore_errors: "{{ item.key == 'net.bridge.bridge-nf-call-iptables' }}"   # module loads after k3s start

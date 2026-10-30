@@ -17,9 +17,10 @@ ansible/
 ```
 
 ## Requirements (control node)
+- Targets need Python >= 3.9 (ansible-core 2.17+); Ubuntu 20.04 (3.8) fails at fact gathering before the OS gate even runs.
 - `kubectl` with access to the hub context in `group_vars/all.yml`
 - Ansible + `ansible.posix` collection. On NixOS/nix-darwin:
-  `nix-shell -p ansible kubectl --run 'ansible-galaxy collection install ansible.posix && ansible-playbook site.yml'`
+  `nix-shell -p ansible kubectl --run 'ansible-galaxy collection install ansible.posix community.general && ansible-playbook site.yml'`
 - Hub already has a `ClusterRegistrationToken` named `edge-token` in `fleet-default`
   (see the hub repo, `edge/hub/`).
 
@@ -41,6 +42,7 @@ NAT/management NIC plus a reachable NIC, `edge-k3s` resolves the interface that 
 ## Day 2
 | task | how |
 |---|---|
+| find a cluster on the hub | `kubectl get clusters.fleet.cattle.io -n fleet-default -l name=<inventory name>` (object names are generated) |
 | add a machine | add it to `inventory/edge.yml`, `ansible-playbook site.yml -l <name>` |
 | rotate the registration token | recreate the CRT on the hub, `ansible-playbook site.yml --tags fleet-agent` |
 | bump K3s | change `k3s_version`, re-run; or hand it to `system-upgrade-controller` via Fleet |
