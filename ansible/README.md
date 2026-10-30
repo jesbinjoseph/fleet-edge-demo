@@ -32,6 +32,12 @@ ansible-playbook site.yml                      # all hosts in [edge]
 The hub play runs once and passes the token in memory; nodes get it as
 `/etc/rancher/fleet/agent-values.yaml` (0600, root). Nothing sensitive is written in this repo.
 
+## Multi-NIC hosts
+K3s advertises the IP of the default-route interface unless told otherwise. On hosts with a
+NAT/management NIC plus a reachable NIC, `edge-k3s` resolves the interface that owns
+`ansible_host` and passes `--node-ip/--node-external-ip/--flannel-iface` for it. Override with
+`k3s_node_ip` / `k3s_iface` host vars when `ansible_host` is not the address you want in-cluster.
+
 ## Day 2
 | task | how |
 |---|---|

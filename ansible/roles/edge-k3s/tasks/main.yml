@@ -5,11 +5,28 @@
     dest: /usr/local/share/k3s-install.sh
     mode: "0755"
 
+# Multi-NIC hosts (e.g. QEMU user-mode NAT on enp0s1 + a real/bridged NIC on enp0s2):
+# the default route is often the NAT NIC, which K3s would otherwise pick as node IP.
+# Pin everything to the interface that owns ansible_host.
+- name: Find the interface that owns ansible_host
+  ansible.builtin.set_fact:
+    k3s_node_ip: "{{ k3s_node_ip | default(ansible_host) }}"
+    k3s_iface: >-
+      {{ k3s_iface | default(
+           ansible_facts.interfaces
+           | map('extract', ansible_facts) | selectattr('ipv4', 'defined')
+           | selectattr('ipv4.address', 'equalto', k3s_node_ip | default(ansible_host))
+           | map(attribute='device') | first) }}
+
 - name: Install k3s server (single node)
   ansible.builtin.command: /usr/local/share/k3s-install.sh
   environment:
     INSTALL_K3S_VERSION: "{{ k3s_version }}"
-    INSTALL_K3S_EXEC: "server --node-name {{ inventory_hostname }} {{ k3s_server_args | join(' ') }}"
+    INSTALL_K3S_EXEC: >-
+      server --node-name {{ inventory_hostname }}
+      --node-ip {{ k3s_node_ip }} --node-external-ip {{ k3s_node_ip }}
+      --flannel-iface {{ k3s_iface }}
+      {{ k3s_server_args | join(' ') }}
   args:
     creates: /usr/local/bin/k3s
 
