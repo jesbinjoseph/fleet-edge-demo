@@ -1,0 +1,19 @@
+---
+- name: Wait for each edge cluster to report Ready on the hub
+  ansible.builtin.command: >
+    kubectl --context {{ hub_kube_context }} -n {{ hub_fleet_namespace }}
+    get clusters.fleet.cattle.io {{ item }} -o jsonpath={.status.agent.lastSeen}
+  loop: "{{ groups['edge'] }}"
+  register: seen
+  until: seen.stdout | length > 0
+  retries: 24
+  delay: 10
+  changed_when: false
+
+- name: Show cluster status
+  ansible.builtin.command: kubectl --context {{ hub_kube_context }} -n {{ hub_fleet_namespace }} get clusters.fleet.cattle.io --show-labels
+  changed_when: false
+  register: clusters
+
+- ansible.builtin.debug:
+    msg: "{{ clusters.stdout_lines }}"

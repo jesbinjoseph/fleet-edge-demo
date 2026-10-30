@@ -1,0 +1,21 @@
+# Hub
+hub_kube_context: gke_devops-care_asia-south1-a_ohn-devops-care
+hub_fleet_namespace: fleet-default
+hub_registration_token: edge-token      # ClusterRegistrationToken name on the hub
+
+# Must match the hub's fleet-controller image tag:
+#   kubectl --context <hub> get deploy fleet-controller -n cattle-fleet-system -o jsonpath='{.spec.template.spec.containers[0].image}'
+fleet_agent_version: "0.16.2"
+
+# Pin K3s fleet-wide; upgrade by bumping here and re-running (or via system-upgrade-controller later).
+k3s_version: "v1.33.5+k3s1"
+k3s_server_args:
+  - --disable traefik
+  - --disable servicelb
+  - --write-kubeconfig-mode 0600
+
+helm_version: "v3.19.0"
+
+supported_distributions:
+  - { distribution: Ubuntu, versions: ["22.04", "24.04"] }
+  - { distribution: Debian, versions: ["12", "13"] }

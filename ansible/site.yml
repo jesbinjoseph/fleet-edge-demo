@@ -1,0 +1,29 @@
+---
+# Onboard edge machines: OS prereqs -> K3s -> fleet-agent registered with the hub.
+# Usage:
+#   ansible-playbook site.yml                      # everything in [edge]
+#   ansible-playbook site.yml -l edge-02           # one host
+#   ansible-playbook site.yml --tags fleet-agent   # re-register / rotate token only
+- name: Fetch Fleet registration values from the hub (once, from the control node)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [fleet-agent]
+  roles:
+    - hub-token
+
+- name: Onboard edge nodes
+  hosts: edge
+  gather_facts: true
+  roles:
+    - { role: edge-prereqs,     tags: [prereqs] }
+    - { role: edge-k3s,         tags: [k3s] }
+    - { role: edge-fleet-agent, tags: [fleet-agent] }
+
+- name: Verify registration on the hub
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [verify]
+  roles:
+    - hub-verify

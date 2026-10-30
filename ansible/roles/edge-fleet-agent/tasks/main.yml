@@ -1,0 +1,36 @@
+---
+- name: Values from the hub play
+  ansible.builtin.set_fact:
+    fleet_agent_values_b64: "{{ hostvars['localhost'].fleet_agent_values_b64 }}"
+  no_log: true
+
+- name: Fleet config dir
+  ansible.builtin.file:
+    path: /etc/rancher/fleet
+    state: directory
+    mode: "0700"
+
+- name: Agent values (contains the registration token)
+  ansible.builtin.copy:
+    dest: /etc/rancher/fleet/agent-values.yaml
+    content: "{{ fleet_agent_values_b64 | b64decode }}"
+    mode: "0600"
+  no_log: true
+  register: agent_values
+
+- name: Cluster labels as helm --set args
+  ansible.builtin.set_fact:
+    fleet_label_args: >-
+      {% for k, v in (fleet_labels | default({}) | combine({'name': inventory_hostname})).items() -%}
+      --set labels.{{ k }}={{ v }} {% endfor %}
+
+- name: Install / upgrade fleet-agent
+  ansible.builtin.command: >
+    /usr/local/bin/helm upgrade --install fleet-agent
+    https://github.com/rancher/fleet/releases/download/v{{ fleet_agent_version }}/fleet-agent-{{ fleet_agent_version }}.tgz
+    -n cattle-fleet-system --create-namespace --wait --timeout 5m
+    --values /etc/rancher/fleet/agent-values.yaml {{ fleet_label_args }}
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: helm_out
+  changed_when: "'has been upgraded' in helm_out.stdout or 'STATUS: deployed' in helm_out.stdout"

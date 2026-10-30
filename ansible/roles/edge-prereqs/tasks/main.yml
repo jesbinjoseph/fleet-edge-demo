@@ -1,0 +1,69 @@
+---
+- name: Refuse unsupported OS
+  vars:
+    _major_minor: "{{ ansible_facts.distribution_version.split('.')[:2] | join('.') }}"
+    _ok_versions: >-
+      {{ supported_distributions | selectattr('distribution', 'equalto', ansible_facts.distribution)
+         | map(attribute='versions') | flatten | list }}
+  ansible.builtin.assert:
+    that: (ansible_facts.distribution_major_version in _ok_versions) or (_major_minor in _ok_versions)
+    fail_msg: "{{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }} is not on the supported list; upgrade before onboarding."
+
+- name: Base packages
+  ansible.builtin.apt:
+    name: [curl, ca-certificates, chrony, open-iscsi, nfs-common]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Time sync on
+  ansible.builtin.service:
+    name: chrony
+    state: started
+    enabled: true
+
+- name: Never sleep
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    masked: true
+  loop: [sleep.target, suspend.target, hibernate.target, hybrid-sleep.target]
+
+- name: Lid close / idle do nothing (desktops and laptops)
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/logind.conf
+    regexp: "^#?{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: HandleLidSwitch, value: ignore }
+    - { key: HandleLidSwitchExternalPower, value: ignore }
+    - { key: IdleAction, value: ignore }
+  notify: restart logind
+
+- name: Unattended upgrades must not reboot on their own
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/99-fleet-no-autoreboot
+    mode: "0644"
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "false";
+
+- name: Disable swap now
+  ansible.builtin.command: swapoff -a
+  when: ansible_facts.swaptotal_mb | int > 0
+  changed_when: true
+
+- name: Disable swap in fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\\sswap\\s.*)$'
+    replace: '# \\1'
+
+- name: Kernel params for k8s
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/90-k3s.conf
+    reload: true
+  loop:
+    - { key: net.ipv4.ip_forward, value: "1" }
+    - { key: net.bridge.bridge-nf-call-iptables, value: "1" }
+  ignore_errors: "{{ item.key == 'net.bridge.bridge-nf-call-iptables' }}"   # module loads after k3s start

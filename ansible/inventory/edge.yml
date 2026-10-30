@@ -1,0 +1,18 @@
+# One K3s cluster per machine. inventory_hostname becomes the Fleet cluster name.
+# fleet_labels drive GitRepo/fleet.yaml targeting; keep them boring and stable.
+all:
+  children:
+    edge:
+      vars:
+        ansible_user: ubuntu
+        ansible_become: true
+      hosts:
+        edge-01:
+          ansible_host: 192.168.64.11
+          fleet_labels: { env: edge, site: lab, os: ubuntu2204 }
+        edge-02:
+          ansible_host: 192.168.64.12
+          fleet_labels: { env: edge, site: lab, os: ubuntu2404 }
+        edge-03:
+          ansible_host: 192.168.64.13
+          fleet_labels: { env: edge, site: lab, os: ubuntu2004 }
